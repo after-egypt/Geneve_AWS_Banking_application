@@ -1,6 +1,6 @@
              CLIENT:
 
-Input(Type and arguments)
+Input(Type and arguments) <-> Timer
 |
 Geneve Packaging   Server IP & Port    Print Output
 |                     |        |         ^
@@ -18,32 +18,33 @@ Queue                             |
 Geneve Unpacking                  |                        
 |                                 |         
 ID Verification <-> Log           |
-| |   +--> Client IP and Port -> Send
-| |                               ^          
-| Database modification           |                             
-| |           |                   |                       
-| |         Print Errors          |                                
-| |                               |         
+|   +--> Client IP and Port --> Send
+|                                 ^          
+Database modification             |                             
+|           |                     |                       
+|         Print Errors            |                                
+|                                 |         
 Geneve Packaging -----------------+                      
 
+Timer: Client can only send 1 request per 2 seconds because of the timestamp.
 Send: Handles Dropped packets by resending every 20 seconds 6 times if there's no reply (timestamp is not changed). New inputs override this.
 Queue: 2d byte array. Listen appends to this, Geneve unpacking deletes from the beginning.
 ID Verification: Right now it just matches the given username, but later this could match tokens in the username slot, use symmectric decryption based on a hash of their password, or use public key encryption. This also checks the log for repeated requests.
-Log: Stores requests in an array of dataype: (username, timestamp) Stores requests until 30 seconds after the timestamp
+Log: Stores requests in an array of dataype: (username, timestamp) Stores requests until 45 seconds after the timestamp
 Client IP & Port: Stored in an array of (username, UDPConn, timestamp), Send deletes from this.
 Geneve Packaging (server): Any module before this can skip directly to here with and error code >1.
 Print Output: Handles error codes
 
-Client Geneve: Timestamp, Type of transaction, User Name
+Client Geneve: Timestamp, Type of transaction, User Name		
 Transaction Types:
   0 = Check Balance (no options)
   1 = Widthdraw (option: int)
   2 = Deposit (option: int)
-  3 = Open Accout (option: string)
+  3 = Open Accout (possibly an option for a password hash)
 
 Server Geneve: Timestamp, Error code,
 Error Codes:
   0 = Sucess (no options)
   1 = Balance (option: int)
   other int= converted to error message by client (no option)
-
+Timestamp: Seconds since midnight UT /2 (16 bits)

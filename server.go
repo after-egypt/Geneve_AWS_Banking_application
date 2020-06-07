@@ -10,7 +10,14 @@ func CheckError(err error) {
 		os.Exit(0)
 	}
 }
+/*
+func GenevePkg(int errcode,int balance){
+	head := make([]byte,1024)
+	ver := 0
+	protocolType := int16(0xABCD)
+	head[0]
 
+}*/
 func main() {
 
 	ServerAddr,err := net.ResolveUDPAddr("udp",":10001")
