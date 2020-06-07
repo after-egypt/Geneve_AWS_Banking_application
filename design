@@ -3,11 +3,11 @@ Client:
 Input(Type and arguments)
 |
 Geneve Packaging   Server IP & Port    Print Output
-|                     |        |         |
+|                     |        |         ^
 Send <----------------+        v   Geneve Unpacking
-|  |                                |
+|  |                                ^
 |  +-------------------------> Listen
-|                                 |         
+|                                 ^         
 ...                               ...         
 |                                 |         
 |                                 |         
@@ -19,11 +19,27 @@ Geneve Unpacking                  |
 |                                 |         
 ID Verification                   |                       
 |                                 |          
-Database moification              |                             
+Database modification             |                             
 |             |                   |                       
 Response    Print Errors          |                                
 |                                 |         
 Geneve packing                    |                      
 |                                 |
 Send -----------------------------+
+
+Queue: 2d byte array
+Print Output: Handles error codes
+ID Verification: Right now it just matches the given username, but later this could match tokens in the username slot, use symmectric decryption based on a hash of their password, or use public key encryption.
+Client Geneve: Timestamp, Type of transaction, User Name
+Transaction Types:
+  0 = Check Balance (no options)
+  1 = Widthdraw (option: int)
+  2 = Deposit (option: int)
+  3 = Open Accout (option: string)
+
+Server Geneve: Timestamp, Error code,
+Error Codes:
+  0 = Sucess
+  1 = Balance (option: int)
+  other int= converted to error message by client
 

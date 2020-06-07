@@ -4,8 +4,7 @@ import("fmt"
 
 
 func main() {
-	buf := int('a')
-
+	buf := int64(0xFFFFFFFF)
 	fmt.Println(buf)
 
 }

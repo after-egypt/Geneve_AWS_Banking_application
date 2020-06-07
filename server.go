@@ -12,6 +12,7 @@ func CheckError(err error) {
 }
 
 func main() {
+
 	ServerAddr,err := net.ResolveUDPAddr("udp",":10001")
 	CheckError(err)
 
