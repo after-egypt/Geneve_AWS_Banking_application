@@ -20,14 +20,17 @@ def GenevePkg(ttype,clientMsg):
     return Msg
 
 def GeneveUnPkg(tlv):
-    print(type(tlv[0]))
-    optClass = int.from_bytes(tlv[0], byteorder='big')<<8 + int.from_bytes(tlv[1], byteorder='big')
+    print(type(tlv[1:1]))
+    #python automatically interprets bytearray[idx] as type int
+    optClass = tlv[0]<<8 | tlv[1]
+    print(hex(optClass), hex(tlv[0]<<8),hex(tlv[1]))
     if optClass != 0x1234:
         print("Err: Incorrect Option Class")
         sys.exit()
-    ttype = int.from_bytes(tlv[2],byteorder='big')
-    length = int.from_bytes(tlv[3],byteorder='big')
+    ttype = tlv[2]
+    length = tlv[3]
     bal = int.from_bytes(tlv[4:],"little")
+    print(hex(bal))
     return ttype, length, bal
 Msg = GenevePkg(ttype,clientMsg)
 print(Msg)
@@ -40,5 +43,5 @@ UDPClientSocket.sendto(Msg,serverAddrPort)
 serverMsg = UDPClientSocket.recvfrom(bufferSize)
 ttype, length, bal = GeneveUnPkg(serverMsg[0])
 #print("Server says",serverMsg[0][0],"Type:",type(serverMsg[0]))
-print("Server says Class:",optClass,"Type:",ttype,"Number:",bal,"Raw:",serverMsg.hex())
+print("Server says Type:",ttype,"Number:",bal,"Raw:",serverMsg[0])
 

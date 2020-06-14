@@ -6,58 +6,64 @@ Needs:
   Basic Banking transactions
 Maybe:
   Transaction Speed
-  Usability speed (ie Try to deposit a large amount -> error too big -> have to deposit multiple small parts, wasting time)
+  Interface never gets in the way of the user
 
-	     CLIENT:
+High Level Overview:
+  Server:
+    Listens
+    Verifies ID
+    Modifies Database
+    Sends Balance/Error code
 
-Input(Type and arguments) <-> Timer
-|
-Geneve Packaging   Server IP & Port    Print Output
-|                     |        |         ^
-Send <----------------+        v   Geneve Unpacking
-   |                                ^
-   +-------------------------> Listen
+  Client:
+    Records input
+    Sends requests
+    Listens
+    Prints
 
-
-            SERVER:      
-
-Listen                                          
-|                                          
-Queue                                         
-|                                         
-Geneve Unpacking                                         
-|                                         
-ID Verification <-> Log           
-|   +--> Client IP and Port --> Send
-|                                 ^          
-Database modification             |                             
-|           |                     |                       
-|         Print Errors            |                                
-|                                 |         
-Geneve Packaging -----------------+                      
-
+Lower level description:
 SERVER
-+--------+         +-----------------------+
-| Listen |--Queue--| ID Verification       |  +----------+
-+--------+         | Database Modification +--+ Database |
-                   | Send                  |  +----------+
-		   +-----------------------+
++--------+
+| Listen |
++--------+
+   |
+ Queue
+   |
++--v--------------------+ 
+| Unpacking             |               +-------------+
+| ID Verification <----------->Log<-----| Log Cleaner |
+| Database Modification <--> Database   +-------------+
+| Packaging             |
+| Send                  |  
++-----------------------+
 
 CLIENT
-+--------+
-| Input  |
-| Send   |
-| Listen |
-| Print  |
-+--------+
-Timer: Client can only send 1 request per 1 seconds because of the timestamp.
-Send(client): Handles Dropped packets by resending every 20 seconds 6 times if there's no reply (timestamp is not changed). New inputs override this.
-Queue: 2d byte array. Listen appends to this, Geneve unpacking deletes from the beginning.
-ID Verification: matches the given username to a database entry. This also checks the log for repeated requests. Repeated requests are re-logged, deleting their old log entry, and stop there.
-Log: Stores requests in an array of datatype: (username, timestamp) Stores requests until 120 seconds after the timestamp
-Client IP & Port: Stored in an array of (username, UDPConn, timestamp), Send deletes from this.
-Geneve Packaging (server): Any module before this can skip directly to here with and error code >1.
-Print Output: Handles error codes
++-----------+      +-------------+
+| Input     |   +--> Log Cleaner |
+| Packaging ----+  +----|--------+
+| Send      |   |       v 
++---^-------+   +<---> Log
+    |     
++---v-------+ 
+| Listen    |
+| Unpacking |
+| Print     |
++-----------+
+
+CLIENT:
+  Log: This file shows the timestamp and port of previously sent packages. Before declaring the timestamp, this file is checked and the client's send & listen port might have to change so that all port-timestamp pairs are unique. After this file is checked, Log Clearner is run
+  Log Cleaner: Deletes lines from the log that are > 1 second old. Since the entries are sequencial, this only reads from the beginning to the first not-old entry.
+  Send: Handles Dropped packets by resending every 20 seconds 6 times if there's no reply (timestamp is not changed). After the first send, this program forks for the listen process while continuing to run in the background. If there's no reply after all sends, either this process kills the listener and prints the error, or signals the listener to stop with an error.
+  Listen: Once a response is received, this kills the send process.
+  Print Output: Handles error codes
+
+SERVER:
+  Queue: 2d byte array. Listen appends to this unless the queue is full. In that case an error is passed to Packaging. Unpacking deletes from the beginning.
+  ID Verification: If the request is to open an account, the database assigns it the latest unused userID. Elsewise it matches the given username to a database entry. This also checks the log for repeated requests(first checking that Log cleaner is not using the file). Repeated requests are only re-logged, deleting their old :log entry.
+  Log: Stores requests in an array of datatype: (username, timestamp) Stores requests until 120 seconds after the timestamp
+  Log Cleaner: Launched in the background as part of the server startup. Runs every 10 seconds.
+  Packaging: Any module before this can skip directly to here with and error code >1.
+  Send: uses the ip address and port of the client who's request its processing. 
 
 CLIENT OPTION
  0                   1                   2                   3
@@ -65,15 +71,16 @@ CLIENT OPTION
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |          Option Class         |      Type     |R|R|R| Length  |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                       User ID                       |Timestamp|
+|                       User ID                                 |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|          Timestamp    |                  Value                |
-+-+-+-+-+-+-+-+-+-+-+-+-+                                       +
-|                                                               |
+|          Timestamp                                            |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+       
+|  Action         |      Value                                  |
++-+-+-+-+-+-+-+-+-+                                             |
 ~                                                               ~
 |                                                               |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-Types:
+Actions:
   0 = Check Balance (no options)
   1 = Widthdraw ()
   2 = Deposit (option: int)
@@ -81,7 +88,7 @@ Types:
 
 Timestamp: Seconds since midnight UT
 
-Value: An integer amount of cents to be interpreted based on the type. Stored in little endian format in case the length is accidentally made too large.
+Value: An integer amount of cents to be interpreted based on the action. Stored in little endian format in case the length is accidentally made too large.
   Check Balance = null
   Withdraw = Amount to withdraw
   Deposit = Amount to deposit
@@ -94,10 +101,12 @@ SERVER OPTION
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |          Option Class         |  Error Code   |R|R|R| Length  |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                       User ID                       |Timestamp|
+|                       User ID                                 |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|          Timestamp    |               Balance                 |
-+-+-+-+-+-+-+-+-+-+-+-+-+                                       +
+|                 Timestamp                                     |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| error code      |                     balance                 |
++-+-+-+-+-+-+-+-+-+                                             +
 |                                                               | 
 ~                                                               ~
 |                                                               |

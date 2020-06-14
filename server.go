@@ -33,7 +33,7 @@ func GenevePkg(errCode uint8, msg uint)([]byte, error){
 	out[3] = byte(Length)
 	//fmt.Println(fmt.Sprintf("%x",msg))
 	for i:= 0; bits.Len(msg) != 0; i++ {
-		out[4+i] = byte(bits.Reverse8(uint8(msg & 0x0000FF)))
+		out[4+i] = byte(msg & 0x0000FF)
 		//fmt.Println(fmt.Sprintf("%x",out[4+i]))
 		msg = msg>>8
 	}

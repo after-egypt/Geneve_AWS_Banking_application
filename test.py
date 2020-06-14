@@ -1,1 +1,2 @@
-print(0x34)
+print(type(0x12<<8))
+
