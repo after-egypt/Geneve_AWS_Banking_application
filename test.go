@@ -1,10 +1,11 @@
 package main
 import("fmt"
+	//"math/bits"
 )
 
-
 func main() {
-	buf := int64(0xFFFFFFFF)
-	fmt.Println(buf)
+	var t uint = 0x01
+	fmt.Println(float64(t)/8)
+	
 
 }
