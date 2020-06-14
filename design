@@ -1,13 +1,12 @@
-Problem Statement 
-High level overview
-Usecases
-More Clear dealing with mulitple clients
-What kind of database
-Separate descriptions into clent &server
-Error Timestamp too old
-Can someone else write this code based on this
-Block = thread
-sequance num instead of time?
+
+Problem Statement: A Banking interface. 
+Needs:
+  Super good reliability
+  Never loose/corrupt data
+  Basic Banking transactions
+Maybe:
+  Transaction Speed
+  Usability speed (ie Try to deposit a large amount -> error too big -> have to deposit multiple small parts, wasting time)
 
 	     CLIENT:
 
@@ -54,8 +53,8 @@ CLIENT
 Timer: Client can only send 1 request per 1 seconds because of the timestamp.
 Send(client): Handles Dropped packets by resending every 20 seconds 6 times if there's no reply (timestamp is not changed). New inputs override this.
 Queue: 2d byte array. Listen appends to this, Geneve unpacking deletes from the beginning.
-ID Verification: Right now it just matches the given username, but later this could match tokens in the username slot, use symmetric decryption based on a hash of their password, or use public key encryption. This also checks the log for repeated requests
-Log: Stores requests in an array of datatype: (username, timestamp) Stores requests until 65 seconds after the timestamp
+ID Verification: matches the given username to a database entry. This also checks the log for repeated requests. Repeated requests are re-logged, deleting their old log entry, and stop there.
+Log: Stores requests in an array of datatype: (username, timestamp) Stores requests until 120 seconds after the timestamp
 Client IP & Port: Stored in an array of (username, UDPConn, timestamp), Send deletes from this.
 Geneve Packaging (server): Any module before this can skip directly to here with and error code >1.
 Print Output: Handles error codes
@@ -108,4 +107,4 @@ Error Codes:
   1 = Balance
   other int= converted to error message by client
 
-Balance: This is null if the error code isn't 1. Stored exactly the same as the Value
+Balance: This is null/zero if the error code isn't 1. Stored exactly the same as the Value
