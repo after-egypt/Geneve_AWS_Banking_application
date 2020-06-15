@@ -17,7 +17,7 @@ func CheckError(err error,loop bool) {
 		}
 	}
 }
-func GenevePkg(errCode uint8, msg uint)([]byte, error){
+func GenevePkg(Type uint8, msg uint)([]byte, error){
 	OptClass := 0x1234
 	ByteLen := uint(math.Ceil(float64(bits.Len(msg))/8))
 	Length := uint(math.Ceil(float64(ByteLen)/4))
@@ -29,7 +29,7 @@ func GenevePkg(errCode uint8, msg uint)([]byte, error){
 
 	out[0] = byte(OptClass>>8)
 	out[1] = byte(OptClass & 0x00FF)
-	out[2] = byte(errCode)
+	out[2] = byte(Type)
 	out[3] = byte(Length)
 	//fmt.Println(fmt.Sprintf("%x",msg))
 	for i:= 0; bits.Len(msg) != 0; i++ {
@@ -92,11 +92,11 @@ func main() {
 		ClientConn, err := net.DialUDP("udp",ServerAddr2,addr)
 		CheckError(err,true)
 
-		errCode = 0x36
+		Type = 0x36
 		bal = 0xFCE1265EE
-		buf2, err := GenevePkg(errCode,bal)
+		buf2, err := GenevePkg(Type,bal)
 		CheckError(err,true)
-		fmt.Println("Sending Err Code:",errCode,"Number:",bal,"Raw:",hex.EncodeToString(buf2))
+		fmt.Println("Sending Type:",Type,"Number:",bal,"Raw:",hex.EncodeToString(buf2))
 		//buf2 := []byte(string(buf[0:n]))
 		_,err = ClientConn.Write(buf2)
 		CheckError(err,true)
