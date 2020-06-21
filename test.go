@@ -1,11 +1,30 @@
 package main
-import("fmt"
-	//"math/bits"
+
+import (
+	"fmt"
+	//"math/rand"
+	//"sync"
+	//"time"
+	"encoding/binary"
+	"encoding/hex"
 )
 
-func main() {
-	var t uint = 0x01
-	fmt.Println(float64(t)/8)
-	
+/*
+func process(ch chan int, wg sync.WaitGroup) {
+	i := 0
+	for {
+		ch <- i
+		if rand.Float64() >= .5 {
+			time.Sleep(1 * time.Second)
+		}
+		wg.Add(1)
+		wg.Done()
+		i++
 
+	}
+}*/
+func main() {
+	b := make([]byte, 3)
+	binary.BigEndian.PutUint16(b[1:], 0xABCD)
+	fmt.Println(hex.EncodeToString(b))
 }

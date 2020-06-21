@@ -1,5 +1,5 @@
 python scapy for endianess
-Client cant send 
+Client cant send and listen on the same port as different processes
 
 Problem Statement: A Banking interface. 
 Needs:
@@ -13,10 +13,9 @@ Maybe:
 High Level Overview:
   Server:
     Listens
-    Verifies ID
+    verifies id
     Modifies Database
     Sends Balance/Error code
-=TAN(ASIN(F6/G4))/F6
   Client:
     Records input
     Sends requests
@@ -53,8 +52,8 @@ CLIENT
 +-----------+
 
 CLIENT:
-  Log: This file shows the timestamp and port of previously sent packages. Before declaring the timestamp, this file is checked and the client's send & listen port might have to change so that all port-timestamp pairs are unique. After this file is checked, Log Clearner is run
-  Log Cleaner: Deletes lines from the log that are > 1 second old. Since the entries are sequencial, this only reads from the beginning to the first not-old entry.
+  Log: This is a system-wide file with the latest request number. The client's request number is this number +1, after the log is checked, Log Clearner is run
+  Log Cleaner: Increments the log number by 1 and loops the number back to 0 once it reaches 2^16.
   Send: Handles Dropped packets by resending every 20 seconds 6 times if there's no reply (timestamp is not changed). After the first send, this program forks for the listen process while continuing to run in the background. If there's no reply after all sends, either this process kills the listener and prints the error, or signals the listener to stop with an error.
   Listen: Once a response is received, this kills the send process.
   Print Output: Handles error codes
@@ -67,48 +66,71 @@ SERVER:
   Packaging: Any module before this can skip directly to here with and error code >1.
   Send: uses the ip address and port of the client who's request its processing. 
 
-CLIENT OPTION
+CLIENT OPTION: Change balance
  0                   1                   2                   3
  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|          Option Class         |      Type     |R|R|R| Length  |
+|          Option Class         |      0        |R|R|R| Length  |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                       User ID                                 |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|          Timestamp                                            |
+|             Sequence Number                                   |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+       
-|  Action         |      Value                                  |
-+-+-+-+-+-+-+-+-+-+                                             |
+|                        Value                                  |
 ~                                                               ~
 |                                                               |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-Actions:
-  0 = Check Balance (no options)
-  1 = Widthdraw ()
-  2 = Deposit (option: int)
-  3 = Open Accout (possibly an option for a password hash)
 
-Timestamp: Seconds since midnight UT
+Request Number: This is incremented client-side. There is one number per machine/IP Address.
 
-Value: An integer amount of cents to be interpreted based on the action. Stored in little endian format in case the length is accidentally made too large.
-  Check Balance = null
-  Withdraw = Amount to withdraw
-  Deposit = Amount to deposit
-  Open Account = Amount to deposit
+Value: A signed integer amount of cents to be added to the balance(the server responds the new balance)(negative amounts subtract from the balance. Zero amounts querey the balance) Stored in little endian format in case the length is accidentally made too large.
 
-
-SERVER OPTION
+CLIENT OPTION: Open Account
  0                   1                   2                   3
  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|          Option Class         |   Type        |R|R|R| Length  |
+|          Option Class         |      1        |R|R|R| Length  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                      Random ID                                |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|             Sequence Number                                   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+       
+|                        TBD                                    |
+~                                                               ~
+|                                                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+Random ID: This is generated client-side, and is used in case the packet is lost.
+
+TBD: User identification(i.e. Name, Socal security). Not implemented yet
+
+SERVER RESPONSE: Account Made
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Option Class(vendor specific) |   2           |R|R|R| Length  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                       Random ID                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                 Sequence Number                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|            User ID                                            |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               +
+
+User ID: This is generated by the server as the lowest unused number/ID.
+
+SERVER RESPONSE: Change Balance
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Option Class(vendor specific) |   3           |R|R|R| Length  |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                       User ID                                 |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                 Timestamp                                     |
+|                 Sequence Number                               |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-| error code      |                     balance                 |
-+-+-+-+-+-+-+-+-+-+                                             +
+|F|  error code                 |       balance                 |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               +
 |                                                               | 
 ~                                                               ~
 |                                                               |
@@ -118,4 +140,6 @@ Error Codes:
   1 = Balance
   other int= converted to error message by client
 
-Balance: This is null/zero if the error code isn't 1. Stored exactly the same as the Value
+Balance: This is null/zero if the error is fatal. Stored exactly the same as the Value
+
+F (Fatal): This bit is 1 if the error prevented the balance change to occur.

@@ -3,7 +3,6 @@ import sys
 import math
 
 clientMsg = str.encode(input("msg:"))
-ttype = int(input("Choose Type: {0-3}"))
 
 def GenevePkg(ttype,clientMsg):
     Msg = bytearray()
