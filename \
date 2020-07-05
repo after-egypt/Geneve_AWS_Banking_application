@@ -1,0 +1,201 @@
+package main
+
+import (
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"sync"
+	//"math"
+	"encoding/binary"
+	"net"
+	"os"
+	//"github.com/google/gopacket/layers"
+	//"math/bits"
+	"notgo/vbinary"
+)
+
+func CheckError(err error, loop bool) {
+	if err != nil {
+		fmt.Println("Error: ", err)
+		if loop == false {
+			os.Exit(0)
+		}
+	}
+}
+
+type message struct {
+	Addr *net.UDPAddr
+	Data []byte
+}
+type clientID struct {
+	UID    uint32
+	SeqNum uint32
+}
+type optHead struct { //TLV header
+	Class  uint16
+	Type   uint8
+	Flags  uint8
+	Length uint8
+}
+type optType0 struct { //Client Withdraw, Deposit, Balance
+	ID    clientID
+	Value int
+}
+type optType1 struct { //Client Open Acount
+	SocSec uint32
+	SeqNum uint32
+	Name   string
+}
+type optType2 struct { //Server Account Opened
+	RandID uint32
+	SeqNum uint32
+	UID    uint32
+}
+type optType3 struct { //Server Response (change balance)
+	UID    uint32
+	SeqNum uint32
+	Fatal  bool
+	Error  uint16
+	Bal    int
+}
+
+func Calculate(x int) (result int) {
+    result = x + 2
+    return result
+}
+func decodeOptHead(data []byte) (optHead, []byte) {
+	var opt optHead
+
+	opt.Class = binary.BigEndian.Uint16(data[0:2])
+	opt.Type = data[2]
+	opt.Flags = data[3] >> 4
+	opt.Length = (data[3] & 0x1f)
+
+	var msg = make([]byte, opt.Length*4-4)
+	copy(msg, data[4:opt.Length])
+
+	return opt, msg
+}
+
+func clientModBal(cid clientID, recv message, length uint8, database *[]int) ([]byte, error) {
+	var opt optType0
+	var resp []byte
+	switch length {
+	case 1:
+		value := vbinary.BigEndian.Int32(recv.Data)
+	case 2:
+		value := vbinary.BigEndian.Int64(recv.Data)
+	default:
+		resp := make([]byte, 4)
+		binary.BigEndian.PutUint16(resp, 1<<15 + 0x0001)
+		return berrors.New("value too big")
+	}
+	
+	*database[cid.UID] += value
+
+
+}
+
+func clientOpenAccount(recv message, length uint8, database *[]int) error{
+	return nil
+}
+
+func idVerify(recv message) (clientID, []byte, error) {
+	var cid clientID
+	cid.UID = 0
+	cid.SeqNum = 0
+	return cid, nil, nil
+}
+
+func encodeOptHead(opt *optHead) ([]byte, error) {
+	msg := make([]byte, 4)
+
+	binary.BigEndian.PutUint16(msg[0:2], opt.Class)
+	msg[2] = opt.Type
+	if opt.Length>>5 != 0 {
+		return msg, errors.New("encodeOptHead: Length too long")
+	}
+	msg[3] = opt.Flags<<5+opt.Length
+
+	return msg, nil
+}
+
+func listener(queueSize int, queue chan message, wg sync.WaitGroup) {
+	ServerAddr, err := net.ResolveUDPAddr("udp", ":10001")
+	CheckError(err, false)
+
+	ServerConn, err := net.ListenUDP("udp", ServerAddr)
+	CheckError(err, false)
+	defer ServerConn.Close()
+
+	buf := make([]byte, 1024)
+	for {
+		n, addr, err := ServerConn.ReadFromUDP(buf)
+		CheckError(err, true)
+
+		if len(queue) >= queueSize {
+			fmt.Println("Error listener: queue is full")
+		} else {
+			queue <- message{addr, buf[0:n]}
+			wg.Add(1)
+			wg.Done()
+		}
+	}
+}
+
+func main() {
+	queueSize := 20
+	queue := make(chan message, queueSize)
+	var wg sync.WaitGroup
+	go listener(queueSize, queue, wg)
+
+	ServerAddr2, err := net.ResolveUDPAddr("udp", ":10002")
+	CheckError(err, false)
+
+	buf := make([]byte, 1024)
+	var ttype uint8
+	var bal uint
+	var recv message
+	var woptHead optHead
+	var cid clientID
+
+	var database []int
+
+	for {
+		if len(queue) == 0 {
+			wg.Wait()
+		}
+		recv := <-queue
+
+		woptHead, recv.Data = decodeOptHead(recv.Data)
+		
+		if woptHead.Type != 1 {
+			cid, recv.Data, err = idVerify(recv)
+			woptHead.Length -= 2
+		}
+
+		if err == nil {
+			switch woptHead.Type {
+			case 0:
+				clientModBal(cid, recv, woptHead.Length, &database)
+			case 1:
+				clientOpenAccount(recv, woptHead.Length, &database)
+			}
+		}
+		CheckError(err, true)
+
+		fmt.Println("Recieved:", hex.EncodeToString(recv.Data))
+		/*ClientConn, err := net.DialUDP("udp", ServerAddr2, addr)
+		CheckError(err, true)
+
+		buf2, err := encodeOptHead(uint8(ttype), bal)
+		CheckError(err, true)
+		fmt.Println("Sending ttype:", ttype, "Number:", bal, "Raw:", hex.EncodeToString(buf2))
+		//buf2 := []byte(string(buf[0:n]))
+		_, err = ClientConn.Write(buf2)
+		CheckError(err, true)
+
+		ClientConn.Close()*/
+
+	}
+}

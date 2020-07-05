@@ -3,10 +3,11 @@ package main
 import (
 	"fmt"
 	//"math/rand"
+	//"math/bits"
 	//"sync"
 	//"time"
-	"encoding/binary"
-	"encoding/hex"
+	//"encoding/binary"
+	//"encoding/hex"
 )
 
 /*
@@ -24,7 +25,9 @@ func process(ch chan int, wg sync.WaitGroup) {
 	}
 }*/
 func main() {
-	b := make([]byte, 3)
-	binary.BigEndian.PutUint16(b[1:], 0xABCD)
-	fmt.Println(hex.EncodeToString(b))
+	for false {
+		fmt.Println("in loop")
+	}
+	fmt.Println("out loop")
+
 }
