@@ -76,14 +76,14 @@ CLIENT OPTION: Change balance (type 0)
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |             Sequence Number                                   |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+       
-|                        Value                                  |
-~                                                               ~
+|S|                      Value                                  |
+~-+                                                             ~
 |                                                               |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 Request Number: This is incremented client-side. There is one number per machine/IP Address.
 
-Value: A signed integer amount of cents to be added to the balance(the server responds the new balance)(negative amounts subtract from the balance. Zero amounts querey the balance) Stored in little endian format in case the length is accidentally made too large.
+Value: A signed (S = sign) integer amount of cents to be added to the balance(the server responds the new balance)(negative amounts subtract from the balance. Zero amounts querey the balance) Stored in little endian format in case the length is accidentally made too large.
 
 CLIENT OPTION: Open Account (type 1)
  0                   1                   2                   3
@@ -103,7 +103,7 @@ CLIENT OPTION: Open Account (type 1)
 
 
 SERVER RESPONSE: Account Made (type 2)
- 0                   1                   2                   3
+                     1                   2                   3
  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 | Option Class(vendor specific) |   2           |R|R|R| Length  |
@@ -127,11 +127,12 @@ SERVER RESPONSE: Change Balance (type 3)
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                 Sequence Number                               |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|F|  error code                 |       balance                 |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               +
+|    error code                 |S|     balance                 |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                             +
 |                                                               | 
 ~                                                               ~
-|                                                               |
+|                               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                               |         reserved              |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 Error Codes:
   0 = Sucess
@@ -140,9 +141,9 @@ Error Codes:
 
 Balance: This is null/zero if the error is fatal. Stored exactly the same as the Value
 
-F (Fatal): This bit is 1 if the error prevented the balance change to occur.
+Reserved: This is all zero for now (because balance can't be 48 or 80 bits long)
 
-SERVER RESPONSE: General Error (type 4)
+SERVER RESPONSE: Fatal Error (type 4)
 0                   1                   2                   3
 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -152,7 +153,7 @@ SERVER RESPONSE: General Error (type 4)
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                 Sequence Number                               |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|F|  error code                 |                               |
+|    error code                 |                               |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 
