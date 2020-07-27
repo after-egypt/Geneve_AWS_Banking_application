@@ -11,7 +11,7 @@ type entry struct {
 } */
 //type BankType map[uint32]*entry 
 func TestOpenAndMod(t *testing.T) {
-	var set1 = BankType{
+	var set1 = BankType{ //inital values
 		0         : {Bal: 200,       SSN: 0},
 		3         : {Bal: -132,      SSN: 3892341},
 		4         : {Bal: 11115,     SSN: 4194745990},
@@ -34,7 +34,7 @@ func TestOpenAndMod(t *testing.T) {
 		{624556489 ,0},
 		{6         ,33674053},
 	}
-	wantFinal := BankType{
+	expectedFinal := BankType{ 
 		0         : {190       ,0},
 		1         : {0         ,3176915754},
 		2         : {0         ,1135689063},
@@ -50,12 +50,12 @@ func TestOpenAndMod(t *testing.T) {
 		Open(set1, uint32(opens[i]))
 	}
 	for _, entry := range mods {
-		_,_ = Mod(set1, entry.Uid, entry.Val)
+		_ = Mod(set1, entry.Uid, entry.Val)
 	}
 
-	if !reflect.DeepEqual(wantFinal, set1) {
+	if !reflect.DeepEqual(expectedFinal, set1) {
 		t.Error("Mod/Open mismatch\nwant:")
-		for k, v := range wantFinal {
+		for k, v := range expectedFinal {
 			t.Error(k," : ",*v)
 		}
 		t.Error("\ngot:")

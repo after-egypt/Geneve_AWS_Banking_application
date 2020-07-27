@@ -7,6 +7,7 @@ import(
 	"math/bits"
 	"math"
 	"fmt"
+	"encoding/hex"
 )
 
 const ServerClass uint16 = 0x0000
@@ -28,12 +29,11 @@ type OptHead struct { //TLV header
 	Length uint8
 }
 func Send(serverAddr *net.UDPAddr, clientAddr *net.UDPAddr, msg []byte) {
-	fmt.Println("Send func activated")
 	clientConn, err := net.DialUDP("udp", serverAddr, clientAddr)
 	checkErr(err)
 	_, err = clientConn.Write(msg)
 	checkErr(err)
-	fmt.Println("sent response")
+	fmt.Println("sent:",hex.EncodeToString(msg))
 	clientConn.Close()
 }
 

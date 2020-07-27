@@ -31,13 +31,14 @@ type Message struct {
 }
 func clientModBal(m BankType, cid ClientID, recv Message, length uint8) error {
 	fmt.Println("clientModBal activated")
-	value, err := DecodeModBal(recv.Data[4:], length)
+	value, err := DecodeModBal(recv.Data[12:])
 	CheckError(err, true)
 
-	bal, err := Mod(m, cid.UID, value)
+	err = Mod(m, cid.UID, value)
 	CheckError(err, true)
+	fmt.Println("New Bank Entry is:",*m[cid.UID])
 
-	msg,_ := EncodeModBal(cid, 0, bal)
+	msg,_ := EncodeModBal(cid, 0, m[cid.UID].Bal)
 	Send(ServerSendAddr, recv.Addr, msg)
 
 	return nil
@@ -45,7 +46,7 @@ func clientModBal(m BankType, cid ClientID, recv Message, length uint8) error {
 
 func clientOpenAccount(m BankType, recv Message, length uint8) error {
 	fmt.Println("clientOpenAccount Activated")
-	ssn, seqNum, _ := DecodeOpenAcc(recv.Data[4:], length)
+	ssn, seqNum, _ := DecodeOpenAcc(recv.Data[4:])
 	//needs log checking
 	prs, err := CheckSSN(m, ssn)
 	CheckError(err, true)
@@ -65,9 +66,9 @@ func idVerify(m BankType, recv Message) (ClientID, bool) {
 	fmt.Println("idVerify Activated")
 	cid := DecodeClientID(recv.Data[4:12])
 	//needs log checking
-	fmt.Println(cid)
+	fmt.Println("CID:",cid)
 	prs, _ := CheckUid(m, cid.UID)
-	fmt.Println(prs)
+	fmt.Println("Account Exists?",prs)
 	return cid, prs //true means account exists
 }
 
@@ -83,7 +84,6 @@ func listener(queueSize int, queue chan Message) {
 	fmt.Println("listener ready")
 	for {
 		n, addr, err := ServerConn.ReadFromUDP(buf)
-		fmt.Println("read message from:",addr)
 		CheckError(err, true)
 
 		if len(queue) >= queueSize {
@@ -108,7 +108,7 @@ func main() {
 	fmt.Println("main loop ready")
 	for {
 		recv := <-queue // := should automatically wait if queue is empty
-		fmt.Println("recieved:\n",recv.Data)
+		fmt.Println("\nrecieved:\n"+hex.EncodeToString(recv.Data),"\nfrom:",recv.Addr)
 		wOptHead = DecodeOptHead(recv.Data) 
 
 		if wOptHead.Type == OpenAccType {//const
@@ -128,6 +128,6 @@ func main() {
 			}
 		}
 
-		fmt.Println("Recieved:", hex.EncodeToString(recv.Data))
+		fmt.Println("done")
 	}
 }

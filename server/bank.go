@@ -51,11 +51,11 @@ func Open(m BankType, ssn uint32) (uint32, error) {//BankType is passed as refer
 	return uid, nil
 }
 
-func Mod(m BankType, uid uint32, amount int) (int, error) {
+func Mod(m BankType, uid uint32, amount int) (error) {
 	//Assumes uid exists
 
 	m[uid].Bal = m[uid].Bal + amount
-	return m[uid].Bal, nil
+	return nil
 	
 }
 
