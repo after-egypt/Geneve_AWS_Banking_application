@@ -59,9 +59,18 @@ def craftModAcc(negative): #true = negative
     if (negative):
         msg[12] = msg[12] | 0x80 # 1000 0000
     return msg
+def craftDelAcc():
+    uid = int(input("User ID: "))
+
+    msg = bytearray()
+    msg += EncodeOpt(5, 0, 2)
+    msg += uid.to_bytes(4, byteorder='big')
+    msg += GetSeqNum()
+    return msg
+
 
 while True:
-    option = int(input("Which type of transaction?\n0: Open Account\n1: Deposit\n2: Withdraw\n(type a number)"))
+    option = int(input("Which type of transaction?\n0: Open Account\n1: Deposit\n2: Withdraw\n3: Delete Account\n(type a number)"))
     print(type(option))
 
     def inputSwitch(argument):
@@ -76,6 +85,7 @@ while True:
             0: craftOpenAcc,
             1: craftModAccFalse,
             2: craftModAccTrue,
+            3: craftDelAcc
             }
         return switcher.get(argument, returnEmpty)
 
@@ -119,11 +129,18 @@ def serverFatalError(msg):
     print("Fatal Error",errNum)
     return
 
+def serverDelAcc(msg):
+    errCode = int.from_bytes(msg[12:14], "big")
+    if errCode != 0:
+        print("Warning:",0)
+    print("Account deletion successful")
+
 def responseSwitch(argument):
     switcher= {
             2:  serverOpenAcc,
             3:  serverChangeBal,
             4:  serverFatalError,
+            6:  serverDelAcc,
             }
     return switcher.get(argument)
 

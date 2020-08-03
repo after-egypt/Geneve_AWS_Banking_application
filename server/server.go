@@ -25,6 +25,15 @@ const queueSize int = 20
 
 var ServerSendAddr *net.UDPAddr
 
+var ErrCodes = map[string]uint16{
+	"Social security number already registered" : 100,
+	"User ID does not exist" : 200,
+	"Balance too large" : 201,
+	"Unrecognized transaction type"	: 300,
+	"Server error" : 500,
+
+}
+
 type Message struct {
 	Addr *net.UDPAddr
 	Data []byte
@@ -61,7 +70,12 @@ func clientOpenAccount(m BankType, recv Message, length uint8) error {
 	}
 	return nil
 }
-
+func clientDelAcc(m BankType, cid ClientID, recv Message) error{
+	errCode := Delete(m, cid.UID)
+	msg := EncodeDelAcc(cid, errCode)
+	Send(ServerSendAddr, recv.Addr, msg)
+	return nil
+}
 func idVerify(m BankType, recv Message) (ClientID, bool) {
 	fmt.Println("idVerify Activated")
 	cid := DecodeClientID(recv.Data[4:12])
@@ -120,6 +134,12 @@ func main() {
 				case 0: //Client Change Bal
 					err := clientModBal(m, cid, recv, wOptHead.Length)
 					CheckError(err, true)
+				case 5: //Client Delete Account
+					err := clientDelAcc(m, cid, recv)
+					CheckError(err, true)
+				default:
+					msg := EncodeFatalErr(cid, ErrCodes["Unrecognized transaction type"])
+					Send(ServerSendAddr, recv.Addr, msg) 
 				}
 			} else {
 				fmt.Println("ID not found:",cid,prs)

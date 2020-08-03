@@ -58,6 +58,10 @@ func Mod(m BankType, uid uint32, amount int) (error) {
 	return nil
 	
 }
+func Delete(m BankType, uid uint32) (uint16) {
+	delete(m, uid)
+	return 0
+}
 
 
 

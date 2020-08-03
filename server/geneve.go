@@ -150,7 +150,7 @@ func EncodeModBal (cid ClientID, errCode uint16, bal int) ([]byte, error) {//Typ
 ~                                                               ~
 |                                                               |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+*/
-func DecodeOpenAcc (data []byte) (uint32, uint32, string) {//type specific decodes know nothing except the bytes they need. no options data
+func DecodeOpenAcc (data []byte) (uint32, uint32, string) {//type specific decodes know nothing except the bytes they need. no options data.
 	ssn := binary.BigEndian.Uint32(data[:4])
 	seqNum := binary.BigEndian.Uint32(data[4:8])
 	name := string(data[8:])
@@ -170,7 +170,7 @@ func DecodeOpenAcc (data []byte) (uint32, uint32, string) {//type specific decod
 ~-+                                                             ~
 |                                                               |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+*/
-func DecodeModBal (data []byte) (int, error) {
+func DecodeModBal (data []byte) (int, error) {//Function doesn't know cid
 	var value int = 0
 	length := uint(len(data) /4)
 	if (length > 0){
@@ -190,5 +190,17 @@ func DecodeModBal (data []byte) (int, error) {
 	}
 	return value, nil
 }
-
-
+func EncodeDelAcc (cid ClientID, errCode uint16) ([]byte) {
+	msg := make([]byte, 16)
+	copy(msg[:4], EncodeOptHead(OptHead{ServerClass, 0x06, 0x0, 0x03}))
+	copy(msg[4:12], EncodeClientID(cid))
+	binary.BigEndian.PutUint16(msg[12:14],errCode)
+	return msg
+}
+func EncodeFatalErr(cid ClientID, errCode uint16) ([]byte){
+	msg := make([]byte, 16)
+	copy(msg[:4], EncodeOptHead(OptHead{ServerClass, 0x04, 0x0, 0x03}))
+	copy(msg[4:12], EncodeClientID(cid))
+	binary.BigEndian.PutUint16(msg[12:14], errCode)
+	return msg
+}
